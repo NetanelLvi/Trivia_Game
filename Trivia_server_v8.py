@@ -12,6 +12,11 @@ any time an empty msg recived
 
 bug!
 - when a client disconnect using keyboard interupt i cant remove him from logged_users{}
+	seems to be fixed
+
+fetures to add
+- rewarding correct answers
+- checking user answer
 """
 ##############################################################################
 import select
@@ -154,6 +159,7 @@ def send_error(conn : socket.socket, error_msg : str) -> None:
 	build_and_send_message(conn, cmd, error_msg)
 
 
+# currently unused
 def dispose_dead_client(conn : socket.socket, client_sockets : list): # new adding
 	global logged_users
 	try:
@@ -168,7 +174,6 @@ def dispose_dead_client(conn : socket.socket, client_sockets : list): # new addi
 	except :
 		pass 	# OSError Handle potential error if the socket is already closed
 
-#endregion
 
 
 	
@@ -310,6 +315,8 @@ def handle_client_message(conn: socket.socket, cmd: str, data: str, client_socke
 		send_error(conn, error_msg=msg)
 
 
+
+
 # region GAME HELPER FUNCTIONS
 #***********************************************************************
 
@@ -343,7 +350,7 @@ def main():
 	ServerSocket = setup_socket()
 	
 	client_sockets = []		# all saved sockets to select.select
-	messages_to_send = []  # Tuples of (socket, code, data)
+	messages_to_send = []  # Tuples of (socket, msg)
 
 	print("Welcome to Trivia Server!")
 
@@ -370,9 +377,9 @@ def main():
 	
 		# Send messages to ready clients
 		for message in messages_to_send:
-			client, code, msg = message
+			client, msg = message
 			if client in ready_to_write:
-				build_and_send_message(client, code, msg)
+				build_and_send_message(client, msg)
 				messages_to_send.remove(message)
 	
 	# except Exception as e:  # Catch any unexpected errors
