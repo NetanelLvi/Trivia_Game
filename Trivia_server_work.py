@@ -1,6 +1,8 @@
 ##############################################################################
 # server.py
 """
+what's new!
+
 - the client_sockets now become internal variable of the main()
 
 - all the function regarding the client socket disconnection now
@@ -10,9 +12,9 @@ have the client_sockets list as argument to prevent error of [select fd= -1]
 and the dispose_dead_client() just called to make sure of client leaving correctly
 any time an empty msg received 
 
-bug!
-- when a client disconnect using keyboard interrupt i cant remove him from logged_users{}
-	seems to be fixed
+bug fixed!
+- when a client disconnect using keyboard interrupt
+i cant remove him from logged_users{}
 
 """
 ##############################################################################
@@ -32,7 +34,7 @@ questions = {}
 logged_users = {} # a dictionary of clients address to usernames e.g "(1.1.1.1, 5345)": yossi
 messages_to_send = []  # Tuples of (socket.getpeername() : str, (full msg ready to be send) : str)
 
-# CONSTANTS #
+# CONSTANT #
 #***********************************************************************
 ERROR_MSG = "Error! "
 SERVER_PORT = 5678
@@ -115,12 +117,12 @@ def load_questions():# -> dict[str, dict[str, Any]]:
 def load_user_database():
 	"""
 	Loads users list from file	## FILE SUPPORT TO BE ADDED LATER
-	Receives: -
+	Receives: None
 	Returns: user dictionary
 	"""
 	users = {
 			"test"		:	{"password":"test","score":0,"questions_asked":[]},
-			"yossi"		:	{"password":"123","score":50,"questions_asked":[]},
+			"Yossi"		:	{"password":"123","score":50,"questions_asked":[]},
 			"master"	:	{"password":"master","score":200,"questions_asked":[]}
 			}
 	return users
@@ -141,8 +143,8 @@ def setup_socket() -> socket.socket:
 	sock.bind(host_address)
 	sock.listen()	
 	return sock
-	
-	
+
+
 def send_error(conn : socket.socket, error_msg : str) -> None:
 	"""
 	Send error message with given message
@@ -157,28 +159,11 @@ def send_error(conn : socket.socket, error_msg : str) -> None:
 	build_and_send_message(conn, cmd, error_msg)
 
 
-# currently unused
-def dispose_dead_client(conn : socket.socket, client_sockets : list): # new adding
-	global logged_users
-	try:
-			# conn.getpeername()
-		# if conn in client_sockets:
-			del logged_users[conn.getpeername()]
-
-			print(f"[LOGGER] A client disconnected unexpectedly and has removed from the lists but not from logged users.")
-			conn.close()  # Ensure socket is closed
-			client_sockets.remove(conn)
-			# global logged_users	
-	except :
-		pass 	# OSError Handle potential error if the socket is already closed
-
-
-
 
 ##### MESSAGE HANDLING
 #***********************************************************************
 
-def handle_getscore_message(conn, username : str): #new adding
+def handle_getscore_message(conn, username : str):
 	global users	 # This is needed to access the same users dictionary from all functions
 	global logged_users
 	
@@ -202,7 +187,7 @@ def handle_logout_message(conn : socket.socket, client_sockets : list): # new ad
 	conn.close()
 
 
-def handle_login_message(conn : socket.socket, data : str):  #new adding
+def handle_login_message(conn : socket.socket, data : str)->None:
 	"""
 	Gets socket and message data of login message. Checks weather user and pass exists and match.
 	If not - sends error and finished. If all ok, sends LOGGING OK message and adds user and address to logged_users
@@ -225,7 +210,7 @@ def handle_login_message(conn : socket.socket, data : str):  #new adding
 		build_and_send_message(conn, chatlib.PROTOCOL_SERVER['login_failed_msg'], msg= 'incorrect password!')
 
 
-def handle_logged_message(conn):  #new func
+def handle_logged_message(conn):  
 	global users	 # This is needed to access the same users dictionary from all functions
 	global logged_users
 	logged = str()
@@ -237,7 +222,8 @@ def handle_logged_message(conn):  #new func
 	build_and_send_message(conn, cmd, data)
 
 
-def handle_highscore_message(conn):   #new func
+def handle_highscore_message(conn):   
+	"""giving a player his score"""
 	global users	 # This is needed to access the same users dictionary from all functions
 	cmd = chatlib.PROTOCOL_SERVER["highscore_rspn"]
 	
@@ -295,7 +281,7 @@ def handle_answer_message(conn:socket.socket, data :str, username:str):  # new f
 
 
 
-def handle_client_message(conn: socket.socket, cmd: str, data: str, client_sockets : list) -> bool: #new adding
+def handle_client_message(conn: socket.socket, cmd: str, data: str, client_sockets : list) -> bool:
 
 	"""
 	Gets message code and data and calls the right function to handle command
@@ -336,7 +322,7 @@ def handle_client_message(conn: socket.socket, cmd: str, data: str, client_socke
 # region GAME HELPER FUNCTIONS
 #***********************************************************************
 
-#  unused
+#currently unused
 def print_client_sockets(users_list = logged_users) -> print:
 	""" shows the logged users Ip and port using the global logged_users[]"""
 	print("client list:")
@@ -395,11 +381,7 @@ def main():
 				# try:
 					cmd, data = recv_message_and_parse(current_socket)
 					handle_client_message(current_socket, cmd, data, client_sockets)
-						# dispose_dead_client(current_socket, client_sockets) # , client_sockets
-				# except Exception as e:  # Handle unexpected error
-					# print("not good at all\n",e)
-					# continue  # Move to the next iteration to avoid processing a closed socket
-	
+					
 		# Send messages to ready clients
 		for conn_and_msg in messages_to_send:
 			conn, msg = conn_and_msg
