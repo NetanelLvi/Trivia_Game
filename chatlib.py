@@ -40,8 +40,8 @@ PROTOCOL_SERVER = {
 "correct_answer_rspn" :'CORRECT_ANSWER',
 "wrong_answer_rspn" : 'WRONG_ANSWER',
 "my_score_rspn" : 'YOUR_SCORE',
-"highscore_rspn": 'ALL_SCORE',
-} # ..  Add more commands if neede
+"highScore_rspn": 'ALL_SCORE',
+} # ..  Add more commands if needed
 
 
 ##____________________________________________________________________________
@@ -126,7 +126,7 @@ def parse_message(data: str) -> Union[Tuple[str, str], Tuple[None, None]]:
 	"""
 	try:
 		# Check if the data format fits to the protocol 
-		parts = data.split(DELIMITER)
+		parts = data.split(sep=DELIMITER)
 		if len(parts) != 3:
 			raise ProtocolFormatError(data)		
 		
@@ -158,12 +158,16 @@ def parse_message(data: str) -> Union[Tuple[str, str], Tuple[None, None]]:
 
 ##____________________________________________________________________________
 
-def join_data(msg_fields: List[str]) -> Union[str, None]:
+def join_data(msg_fields : Union [list ,tuple]) -> str:
 	"""
 	Helper method. Gets a list, joins all of it's fields to one string divided by the data delimiter. 
 	Returns: string that looks like cell1#cell2#cell3
 	"""
 	try:
+		lst = []
+		for any in msg_fields:
+			lst.append(str(any))
+			msg_fields = lst
 		# Use the join method with '#' as the delimiter
 		return DATA_DELIMITER.join(msg_fields)
 		
@@ -173,11 +177,11 @@ def join_data(msg_fields: List[str]) -> Union[str, None]:
 ##____________________________________________________________________________
 
 
-def split_data(msg : str, expected_fields : int)-> Union[list, None]:
+def split_data(msg : str, expected_fields : int) -> list:
 	"""
 	Helper method. gets a string and number of expected fields in it. Splits the string 
 	using protocol's data field delimiter (|#) and validates that there are correct number of fields.
-	Returns: list of fields if all ok. If some error occured, returns None
+	Returns: list of fields if all ok. If some error occurred, returns None
 	"""
 	try:
 		# Use the split method with '#' as the delimiter
@@ -185,7 +189,7 @@ def split_data(msg : str, expected_fields : int)-> Union[list, None]:
 		if len(fields_list) == expected_fields:
 			return fields_list
 
-		raise ValueError(f"Recieved {len(fields_list)} instead of {expected_fields} fields")
+		raise ValueError(f"Received {len(fields_list)} instead of {expected_fields} fields")
 
 	except ValueError as e:
 		print(f'Error at split_data: {e}')
@@ -203,7 +207,7 @@ at line 137:
 if not valid_Length(msgLen) or msgLen != len(msg):
 there has been a problem since the bytes size at msg with '\n' 
 is different from the len(str(msg)).
-since the len() doesnt count the '\n' as a str object
+since the len() doesn't count the '\n' as a str object
 """
 
 """

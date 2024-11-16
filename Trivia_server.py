@@ -1,9 +1,6 @@
 ##############################################################################
 # server.py
 """
-- dispose_dead_client() edited to overcome the unexpected leaving of client 
-by itself.
-
 - the client_sockets now become internal variable of the main()
 
 - all the function regarding the client socket disconnection now
@@ -13,13 +10,10 @@ have the client_sockets list as argument to prevent error of [select fd= -1]
 and the dispose_dead_client() just called to make sure of client leaving correctly
 any time an empty msg received 
 
-bug fixed!
-- when a client disconnect using keyboard interrupt i cant remove him
-from logged_users{} ,seems to be fixed
+bug!
+- when a client disconnect using keyboard interrupt i cant remove him from logged_users{}
+	seems to be fixed
 
-#TODO features to be added
-- rewarding correct answers
-- checking user answer
 """
 ##############################################################################
 import select
@@ -35,8 +29,10 @@ import random
 #***********************************************************************
 users = {}
 questions = {}
-logged_users = {} # a dictionary of client hostname to usernames e.g "(1.1.1.1, 5345)": yossi
-# CONSTANT #
+logged_users = {} # a dictionary of clients address to usernames e.g "(1.1.1.1, 5345)": yossi
+messages_to_send = []  # Tuples of (socket.getpeername() : str, (full msg ready to be send) : str)
+
+# CONSTANTS #
 #***********************************************************************
 ERROR_MSG = "Error! "
 SERVER_PORT = 5678
@@ -61,8 +57,10 @@ def build_and_send_message(conn : socket.socket,code : str, msg : str) -> None:
 	"""
 	try:
 		FullMsg = chatlib.build_message(code , msg.strip())
-		conn.send(FullMsg.encode('utf-8'))
-		print(f"[SERVER]", rf"'{FullMsg}'")	  # Debug print
+		FullMsg = FullMsg.encode('utf-8')
+		messages_to_send.append((conn,FullMsg))
+		# conn.send(FullMsg)
+		print(f"[SERVER]", fr"'{FullMsg}'")	  # Debug print
 
 	except (ConnectionResetError, ConnectionAbortedError, OSError):  
 		pass 	# Handle unexpected client disconnection
@@ -86,24 +84,21 @@ def recv_message_and_parse(conn : socket.socket):
 		full_msg = CleanMsg
 
 		cmd, data = chatlib.parse_message(full_msg)
-		print(fr"[CLIENT] {conn.getpeername()} msg:'{full_msg}'")	  # Debug print
-		# here i can kick the player who logout from logged_users
+		print(f"[CLIENT] {conn.getpeername()}", fr'msg:"{full_msg}"')	  # Debug print
 		return cmd, data
 	
 	except (ConnectionResetError, EmptyMsgReceived):  # Handle unexpected client disconnection
-		# dispose_dead_client(conn)
 		return (chatlib.ERROR_RETURN, chatlib.ERROR_RETURN)
 
 	except Exception as e:  # for debugging only
 		print(f"unexpected problem in: 'recv_message_and_parse'\n the function return (None, None) \n {e} ")
 		return (chatlib.ERROR_RETURN, chatlib.ERROR_RETURN)
-	
-	
+
 
 
 # Data Loaders #
 #***********************************************************************
-def load_questions():
+def load_questions():# -> dict[str, dict[str, Any]]:
 	"""
 	Loads questions bank from file	## FILE SUPPORT TO BE ADDED LATER
 	Receives: -
@@ -130,7 +125,7 @@ def load_user_database():
 			}
 	return users
 
-	
+
 
 
 # region SOCKET CREATOR
@@ -179,7 +174,7 @@ def dispose_dead_client(conn : socket.socket, client_sockets : list): # new addi
 
 
 
-	
+
 ##### MESSAGE HANDLING
 #***********************************************************************
 
@@ -191,7 +186,7 @@ def handle_getscore_message(conn, username : str): #new adding
 	cmd = chatlib.PROTOCOL_SERVER["my_score_rspn"]	
 	build_and_send_message(conn, cmd, data)
 
-	
+
 def handle_logout_message(conn : socket.socket, client_sockets : list): # new adding
 	"""
 	Closes the given socket remove socket from client_sockets
@@ -240,7 +235,7 @@ def handle_logged_message(conn):  #new func
 		logged += value + ','
 	data = logged[:-1]
 	build_and_send_message(conn, cmd, data)
-	
+
 
 def handle_highscore_message(conn):   #new func
 	global users	 # This is needed to access the same users dictionary from all functions
@@ -272,16 +267,36 @@ def handle_question_message(conn : socket.socket): # new func
 	build_and_send_message(conn, cmd, data)
 
 
-def handle_answer_message(conn:socket.socket, username:str):  # new func 
+def handle_answer_message(conn:socket.socket, data :str, username:str):  # new func
+	"""
+	gives a feedback to user answer 
+	updating his score accordingly
+	updating the questions_asked list
+	""" 
 	global users 
 	global logged_users
-	cmd = chatlib.PROTOCOL_SERVER["wrong_answer_rspn"]
-	cmd = chatlib.PROTOCOL_SERVER["correct_answer_rspn"]
+	global questions
+	
+	Qid, UserAns = chatlib.split_data(data, 2)
+	UserAns = int(UserAns)
+	Qid = int(Qid)
 
+	if questions[Qid]['correct'] == UserAns:
+		cmd = chatlib.PROTOCOL_SERVER["correct_answer_rspn"]
+		data = ''
+		users[username]['score'] += int(5) 
+		
+	else:
+		cmd = chatlib.PROTOCOL_SERVER["wrong_answer_rspn"]
+		data = str(questions[Qid]['correct'])
+
+	users[username]['questions_asked'].append(Qid)
+	build_and_send_message(conn, cmd, data)
 
 
 
 def handle_client_message(conn: socket.socket, cmd: str, data: str, client_sockets : list) -> bool: #new adding
+
 	"""
 	Gets message code and data and calls the right function to handle command
 	Receives: socket, message code and data
@@ -306,9 +321,7 @@ def handle_client_message(conn: socket.socket, cmd: str, data: str, client_socke
 	elif cmd == chatlib.PROTOCOL_CLIENT["question_rqst"]:
 		handle_question_message(conn)		
 	elif cmd == chatlib.PROTOCOL_CLIENT["answer_question_rqst"]:
-		handle_answer_message(conn, username=logged_users[conn.getpeername()])
-
-		
+		handle_answer_message(conn, data, username=logged_users[conn.getpeername()])
 
 	elif not cmd:
 		# client probably shutdown or already logged in
@@ -322,6 +335,15 @@ def handle_client_message(conn: socket.socket, cmd: str, data: str, client_socke
 
 # region GAME HELPER FUNCTIONS
 #***********************************************************************
+
+#  unused
+def print_client_sockets(users_list = logged_users) -> print:
+	""" shows the logged users Ip and port using the global logged_users[]"""
+	print("client list:")
+	for client in users_list:
+		print(f"\t{client[0]} | {client[1]}")
+
+
 
 def create_random_question() -> str:
 	"""
@@ -347,22 +369,22 @@ def main():
 	# Initializes global users and questions dictionaries using load functions
 	global users
 	global questions
+	global logged_users
+	global messages_to_send
 
 	users = load_user_database()
 	questions = load_questions()
 	ServerSocket = setup_socket()
 	
-	client_sockets = []		# all saved sockets to select.select
-	messages_to_send = []  # Tuples of (socket, msg)
-
-	print("Welcome to Trivia Server!")
+	client_sockets = []		# all saved sockets (fd) to select.select
+	print("\n\t+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n\t|\t Welcome to Trivia Server!  \t|\n\t+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+\n")
 
 	# try:
 	while True:
 		# Monitor sockets for activity
-		ready_to_read, ready_to_write, in_error = select.select([ServerSocket] + client_sockets, [], []) # client_sockets
+		ready_to_read, ready_to_write, in_error = select.select([ServerSocket] + client_sockets, client_sockets, []) # client_sockets
 	
-		# Handle new clients
+		# Handle new clients 
 		for current_socket in ready_to_read:
 			if current_socket is ServerSocket:
 				(client_sock, client_address) = ServerSocket.accept()
@@ -379,11 +401,12 @@ def main():
 					# continue  # Move to the next iteration to avoid processing a closed socket
 	
 		# Send messages to ready clients
-		for message in messages_to_send:
-			client, msg = message
-			if client in ready_to_write:
-				build_and_send_message(client, msg)
-				messages_to_send.remove(message)
+		for conn_and_msg in messages_to_send:
+			conn, msg = conn_and_msg
+			if conn in ready_to_write:
+				# build_and_send_message(client, msg)
+				conn.send(msg)
+				messages_to_send.remove(conn_and_msg)
 	
 	# except Exception as e:  # Catch any unexpected errors
 	# 	print(f"Unexpected Error:\n{e} from:\n {current_socket}")
@@ -398,13 +421,13 @@ def main():
 if __name__ == '__main__':
 	main()
 
-	
+
 
 
 #_____________________________________bugs fixed and insights______________________________________________
 """
- use the keyword 'global' to import variable from outside the scope 
- and access modify abilities when they'r at the module level (scope)
+	use the keyword 'global' to import variable from outside the scope 
+	and access modify abilities when they'r at the module level (scope)
 """
 
 """
@@ -413,21 +436,42 @@ if __name__ == '__main__':
 	before each imported object
 
 'from chatlib import PROTOCOL_CLIENT'  -> 
-	 to get rid of specifying the module name as reference ('chatlib.')
+	to get rid of specifying the module name as reference ('chatlib.')
 """
+
+
+"""
+ConnectionResetError -> when the host side (current) is disconnecting 
+							or shutting down unexpectedly
+ConnectionAbortedError -> when the remote side (server\client doesn't matter)
+							is shutting down or disconnecting unexpectedly
+
+This both exception class handle the error called:
+[WinError 10053] 
+'An established connection was aborted by the software in your host machine.'
+
+this practice down below prevent the software from crushing in that case 
+we use this any time the client is interacting with the server socket
+such as sending messages or running the game menu.
+
+except (ConnectionAbortedError, ConnectionResetError):
+	print("Server has a problem. connection lost. Exiting...")
+	exit()
+"""
+
 
 """
 except (ConnectionResetError):    
-	 prevent the server from crushes when client is shutting down unexpectedly 
-	 without logging out correctly.
-	 note: if you try to parse his last msg 'None' you will probably meet an error
+	prevent the server from crushes when client is shutting down unexpectedly 
+	without logging out correctly.
+	note: if you try to parse his last msg 'None' you will probably meet an error
 """
 
 """
 when the client socket shutdown unexpectedly it sends an empty msg ''
 (since we used .decode('utf-8'))
 so make sure to handle it immediately at your recv method
-as i did in the 'class EmptyMsgReceived(Exception)'
+as i did in the 'class EmptyMsgReceived(exception)'
 """
 
 """
@@ -436,13 +480,30 @@ for python 3.10 and above!
 match cmd:
 		case value if value == chatlib.PROTOCOL_CLIENT["login_msg"]:  # Use comparison with dictionary value
 			handle_login_message(conn, data)
-		case value if value == chatlib.PROTOCOL_CLIENT["logout_msg"]:
-			handle_logout_message(conn)
-			# to be added later
-		# case value if value == chatlib.PROTOCOL_CLIENT["my_score_rqst"]:
-			# logged_users -> dict of socket['users'] -> user['score']
-			# handle_getscore_message(conn, username=None)
+			.
+			.
+			.
 		case _:  # Wildcard pattern for unknown commands
 			print(f"Unknown command: {cmd} from {conn}")
 			send_error(conn, cmd)
+"""
+
+"""
+	because of the need to convert the fields to str() 
+	so the method str.join() will work therefor this occurred
+	questions keys works with str only instead of int
+		4112 -> error '4112' -> work
+
+	the user answer input course:
+	[client]
+	user input (str) -> validate_numeric_input (int) -> 
+	handle_answer_input() (int) -> chatlib.join_data() (str) -> send_answer() (str) 
+	-> join_data() (str) -> play_question()
+	[server]
+	handle_answer_message() (str) -> int() fetching dict question key 
+	
+	due to inconsistency of value type, changes have made.
+	1) the chatlib.join_data() now convert the fields_list to str
+	2) the user answer is of type(str) until the handle_answer_message() func convert it to an (int)
+	to match the dict keys
 """

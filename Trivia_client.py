@@ -1,15 +1,15 @@
 import socket
 from enum import Enum
-import chatlib  # To use chatlib functions or consts, use chatlib.
+import chatlib  # To use chatlib functions or Globals, use chatlib.
 from typing import *
 from time import sleep
 
 
 #***********************************************************************
 
-#region CONST
+#region Globals
 #***********************************************************************
-SERVER_IP = "127.0.0.1"  # Our server will run on same computer as client
+SERVER_IP = "127.0.0.1"  # Our server will run locally for tests
 SERVER_PORT = 5678
 menu_format = "____________________"
 #endregion
@@ -20,7 +20,7 @@ menu_format = "____________________"
 #***********************************************************************
 class Main_Menu(Enum):
 	get_score = 1
-	get_highscore = 2
+	get_highScore = 2
 	play_question = 3
 	get_logged_users = 4
 	logout = 5
@@ -223,7 +223,7 @@ def get_score(conn : socket.socket) -> print:
 		print(f"Error at : 'get_score'\n{e}")
 
 
-def get_highscore(conn : socket.socket) -> print:
+def get_highScore(conn : socket.socket) -> print:
 	"""using the helper method in our scope 
 		fetching the top score from the server
 		conn : socket -> None"""
@@ -231,13 +231,13 @@ def get_highscore(conn : socket.socket) -> print:
 		Ccode , Cdata = chatlib.PROTOCOL_CLIENT['top_score_rqst'] , ''
 		Scmd, Sdata = build_send_recv_parse(conn, Ccode, Cdata)
 
-		if Scmd != chatlib.PROTOCOL_SERVER['highscore_rspn']:
+		if Scmd != chatlib.PROTOCOL_SERVER['highScore_rspn']:
 			print(f'Error fetching high scores: cmd {Scmd} ,data {Sdata}')
 			return 
 		print(f"Top players: \n{Sdata}\n")
 
 	except Exception as e:
-		print(f"Error at : 'get_highscore'\n{e}")
+		print(f"Error at : 'get_highScore'\n{e}")
 
 
 def get_question(conn : socket.socket) -> Tuple[str, list]:
@@ -265,8 +265,6 @@ def get_logged_users(conn : socket.socket) -> print:
 			logged_number = len(Sdata.split(',')) 
 			print(f"\nlogged members: {logged_number}")
 			print(Sdata)
-			# for idx in range(len(Sdata)):
-			# 	print(f"({idx+1}) {Sdata[idx]}")
 			return 
 		
 	except Exception as e:
@@ -286,8 +284,8 @@ def send_answer(conn : socket.socket, Question_Id, answer)  -> Tuple[str, str]:
 	return (Scmd, Sdata)
 
 	# except:
-	print(f"Error at : 'send answer'\n")
-	return (chatlib.ERROR_RETURN , chatlib.ERROR_RETURN)
+	# print(f"Error at : 'send answer'\n")
+	# return (chatlib.ERROR_RETURN , chatlib.ERROR_RETURN)
 
 
 #endregion
@@ -341,8 +339,6 @@ def play_question(conn  : socket.socket) -> None:
 	except ConnectionResetError:
 			print("Connection to server lost. Exiting...4")
 			exit()
-	# except: # Exception as e
-	# 	print(f"Unexpected Error at : 'play_question'\n")
 
 
 #endregion
@@ -386,14 +382,7 @@ def main():
 
 if __name__ == '__main__':
 # make sure the server is running first
-	main()
-
-	r"""
-	cd C:\Users\netan\OneDrive\Documents\VisualStudioCode-projects\python_projects\Network_py_course\rolling_task
-	c:\Users\netan\OneDrive\Documents\VisualStudioCode-projects\python_projects\Network_py_course\python_38.venv\Scripts\python.exe server.pyc
-	python Trivia_client_v6.py
-	""" 
-	# when playing the game this method will be called to control the GamePlay
+	main()	# when playing the game this method will be called to control the GamePlay
 
 
 
