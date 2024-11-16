@@ -17,7 +17,7 @@ from typing import *
 #***********************************************************************
 users = {}
 questions = {}
-logged_users = {} # a dictionary of client hostnames to usernames - will be used later
+logged_users = {} # a dictionary of client hostname to usernames - will be used later
 client_sockets = []
 
 # CONSTANT #
