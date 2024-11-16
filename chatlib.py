@@ -1,4 +1,4 @@
-from typing import List,Tuple, Union
+from typing import Tuple, Union
 
 #region Protocol Constants
 CMD_FIELD_LENGTH = 16	# Exact length of cmd field (in bytes)
@@ -40,8 +40,8 @@ PROTOCOL_SERVER = {
 "correct_answer_rspn" :'CORRECT_ANSWER',
 "wrong_answer_rspn" : 'WRONG_ANSWER',
 "my_score_rspn" : 'YOUR_SCORE',
-"highScore_rspn": 'ALL_SCORE',
-} # ..  Add more commands if needed
+"highscore_rspn": 'ALL_SCORE',
+} # ..  Add more commands if need
 
 
 ##____________________________________________________________________________
