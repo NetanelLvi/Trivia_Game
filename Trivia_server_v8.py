@@ -1,20 +1,23 @@
 ##############################################################################
 # server.py
 """
+- dispose_dead_client() edited to overcome the unexpected leaving of client 
+by itself.
+
 - the client_sockets now become internal variable of the main()
 
-- all the function regardig the client socket disconection now
+- all the function regarding the client socket disconnection now
 have the client_sockets list as argument to prevent error of [select fd= -1]
 
 - the handle_logout_message() now deal with the complete process of logging out 
 and the dispose_dead_client() just called to make sure of client leaving correctly
-any time an empty msg recived 
+any time an empty msg received 
 
-bug!
-- when a client disconnect using keyboard interupt i cant remove him from logged_users{}
-	seems to be fixed
+bug fixed!
+- when a client disconnect using keyboard interrupt i cant remove him
+from logged_users{} ,seems to be fixed
 
-fetures to add
+#TODO features to be added
 - rewarding correct answers
 - checking user answer
 """
@@ -32,7 +35,7 @@ import random
 #***********************************************************************
 users = {}
 questions = {}
-logged_users = {} # a dictionary of client hostnames to usernames e.g "(1.1.1.1, 5345)": yossi
+logged_users = {} # a dictionary of client hostname to usernames e.g "(1.1.1.1, 5345)": yossi
 # CONSTANT #
 #***********************************************************************
 ERROR_MSG = "Error! "
@@ -41,8 +44,8 @@ SERVER_IP = "127.0.0.1"	#   or "0.0.0.0" for all routed networks
 
 
 #***********************************************************************
-class EmptyMsgRecieved(Exception):
-	"""exception raised when the remote socket closed so the data recived is empty"""
+class EmptyMsgReceived(Exception):
+	"""exception raised when the remote socket closed so the data received is empty"""
 	def __init__(self):
 		super().__init__()
 
@@ -53,7 +56,7 @@ def build_and_send_message(conn : socket.socket,code : str, msg : str) -> None:
 	"""
 	Builds a new message using chatlib, wanted code and message. 
 	Prints debug info, then sends it to the given socket.\n
-	Paramaters;  conn : socket.socket , code : str, msg : str
+	Parameters;  conn : socket.socket , code : str, msg : str
 	\nReturns; -> None
 	"""
 	try:
@@ -69,16 +72,16 @@ def build_and_send_message(conn : socket.socket,code : str, msg : str) -> None:
 
 def recv_message_and_parse(conn : socket.socket):
 	"""
-	Recieves a new message from given socket,
+	Receives a new message from given socket,
 	then parses the message using chatlib.\n
-	Paramaters : socket.socket
+	Parameters : socket.socket
 	Returns: ->	cmd (str) and data (str) of the received message. 
-	If error occured, will return None, None
+	If error occurred, will return None, None
 	"""
 	try:
 		RawMsg = conn.recv(chatlib.MAX_DATA_LENGTH).decode('utf-8')
 		if not RawMsg:
-			raise EmptyMsgRecieved()
+			raise EmptyMsgReceived()
 		CleanMsg = RawMsg.strip()
 		full_msg = CleanMsg
 
@@ -87,7 +90,7 @@ def recv_message_and_parse(conn : socket.socket):
 		# here i can kick the player who logout from logged_users
 		return cmd, data
 	
-	except (ConnectionResetError, EmptyMsgRecieved):  # Handle unexpected client disconnection
+	except (ConnectionResetError, EmptyMsgReceived):  # Handle unexpected client disconnection
 		# dispose_dead_client(conn)
 		return (chatlib.ERROR_RETURN, chatlib.ERROR_RETURN)
 
@@ -103,7 +106,7 @@ def recv_message_and_parse(conn : socket.socket):
 def load_questions():
 	"""
 	Loads questions bank from file	## FILE SUPPORT TO BE ADDED LATER
-	Recieves: -
+	Receives: -
 	Returns: questions dictionary
 	"""
 	questions = {
@@ -117,7 +120,7 @@ def load_questions():
 def load_user_database():
 	"""
 	Loads users list from file	## FILE SUPPORT TO BE ADDED LATER
-	Recieves: -
+	Receives: -
 	Returns: user dictionary
 	"""
 	users = {
@@ -135,7 +138,7 @@ def load_user_database():
 def setup_socket() -> socket.socket:
 	"""
 	Creates new listening socket and returns it
-	Recieves: -
+	Receives: -
 	Returns: the socket object
 	"""
 	sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -148,7 +151,7 @@ def setup_socket() -> socket.socket:
 def send_error(conn : socket.socket, error_msg : str) -> None:
 	"""
 	Send error message with given message
-	Recieves: socket, message error string from called function
+	Receives: socket, message error string from called function
 	Returns: None
 	"""
 	# to be checked later
@@ -192,8 +195,8 @@ def handle_getscore_message(conn, username : str): #new adding
 def handle_logout_message(conn : socket.socket, client_sockets : list): # new adding
 	"""
 	Closes the given socket remove socket from client_sockets
-	\n(in later chapters, also remove user from logged_users dictioary)
-	Recieves: socket
+	\n(in later chapters, also remove user from logged_users dictionary)
+	Receives: socket
 	Returns: None
 	"""
 	global logged_users
@@ -208,7 +211,7 @@ def handle_login_message(conn : socket.socket, data : str):  #new adding
 	"""
 	Gets socket and message data of login message. Checks weather user and pass exists and match.
 	If not - sends error and finished. If all ok, sends LOGGING OK message and adds user and address to logged_users
-	Recieves: socket, message code and data
+	Receives: socket, message code and data
 	Returns: None (sends answer to client)
 	"""
 	global users  # This is needed to access the same users dictionary from all functions
@@ -281,7 +284,7 @@ def handle_answer_message(conn:socket.socket, username:str):  # new func
 def handle_client_message(conn: socket.socket, cmd: str, data: str, client_sockets : list) -> bool: #new adding
 	"""
 	Gets message code and data and calls the right function to handle command
-	Recieves: socket, message code and data
+	Receives: socket, message code and data
 	\nReturns: \nTrue: if socket ok \n False: if no msg to handle or socket is closed
 	"""
 	#note! 'from chatlib import PROTOCOL_CLIENT'  to get rid of the module name	
@@ -410,7 +413,7 @@ if __name__ == '__main__':
 	before each imported object
 
 'from chatlib import PROTOCOL_CLIENT'  -> 
-	 to get rid of specifiying the module name as reference ('chatlib.')
+	 to get rid of specifying the module name as reference ('chatlib.')
 """
 
 """
@@ -421,10 +424,10 @@ except (ConnectionResetError):
 """
 
 """
-when the client socket shutdown unexpectetdly it sends an emty msg ''
+when the client socket shutdown unexpectedly it sends an empty msg ''
 (since we used .decode('utf-8'))
-so make sure to handle it immidiatly at your recv method
-as i did in the 'class EmptyMsgRecieved(Excption)'
+so make sure to handle it immediately at your recv method
+as i did in the 'class EmptyMsgReceived(Exception)'
 """
 
 """
